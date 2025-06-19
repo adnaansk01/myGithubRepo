@@ -1,4 +1,4 @@
-package com.ad.pocketpilot.presentation
+package com.ad.pocketpilot.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -27,38 +27,56 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.ad.pocketpilot.data.ExpenseUI
-import com.ad.pocketpilot.data.sampleExpenses
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.ad.pocketpilot.data.local.TransactionEntity
 import com.ad.pocketpilot.ui.theme.PocketPilotTheme
+import com.ad.pocketpilot.viewmodel.TransactionViewModel
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     userName: String,
     onAddExpenseClick: () -> Unit
 ) {
     var selectedCategory by remember { mutableStateOf("All") }
+    val transactionViewModel: TransactionViewModel = viewModel()
+    var categories: State<List<TransactionEntity>>? = null
+    val totalIncome by transactionViewModel.getTotalIncome().collectAsState()
+    val totalExpense by transactionViewModel.getTotalExpense().collectAsState()
+    val totalBalance by transactionViewModel.getTotalBalance().collectAsState()
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         floatingActionButton = {
             FloatingActionButton(onClick = {onAddExpenseClick()}) {
                 Icon(imageVector = Icons.Default.Add, contentDescription = "add expense")
             }
+        },
+        topBar = {
+            TopAppBar(
+                title = {Text("PocketPilotApp", style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold)})
         }
 
     ) {
         padding ->
         Column(
-            modifier = Modifier.fillMaxSize().
-            padding(padding).padding(16.dp)
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(16.dp, top = 0.dp, end = 16.dp, bottom = 16.dp)
         ) {
             Text(text = "Hello, $userName", style = MaterialTheme.typography.titleMedium)
             Text(text = "Track your expenses & control your budget",
@@ -74,8 +92,12 @@ fun HomeScreen(
                 colors = CardDefaults.cardColors(containerColor = Color(0xFFEEF7FF) )
             ) {
                 Column(modifier = Modifier.padding(16.dp) ) {
-                    Text("Monthly Total: 12,400", style = MaterialTheme.typography.titleMedium)
-                    Text("Avg Daily: 413.33", style = MaterialTheme.typography.bodyMedium)
+                    Text("Balance: ₹%.2f".format(totalBalance), style = MaterialTheme.typography.headlineSmall, color = Color(0xFF3B82F6))
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                        Text("Income: ₹%.2f".format(totalIncome), color = Color(0xFF388E3C))
+                        Text("Expense: ₹%.2f".format(totalExpense), color = Color(0xFFD32F2F))
+                    }
                 }
             }
 
@@ -85,20 +107,20 @@ fun HomeScreen(
             CategoryDropdownMenu(
                 selectedCategory = selectedCategory,
                 onSelected = {selectedCategory = it},
-                listOf("All", "Food", "Transport", "Shopping", "Bills", "Entertainment", "Other")
+                listOf("All", "Income", "Expense")
             )
             Spacer(modifier = Modifier.height(8.dp))
 
-            val filteredExpenses = if(selectedCategory == "All") {
-                sampleExpenses
+            categories = if(selectedCategory == "All") {
+                transactionViewModel.getAllTransactions().collectAsState()
+//                transactionViewModel.fetchAllTransactionsByCategories(selectedCategory).collectAsState()
             } else {
-                sampleExpenses.filter { it.category == selectedCategory }
+                transactionViewModel.getByType(selectedCategory).collectAsState()
             }
-
             LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(filteredExpenses) {
+                items(categories.value) {
                     expense ->
                     ExpenseItem(expense)
                 }
@@ -109,7 +131,7 @@ fun HomeScreen(
 }
 
 
-@OptIn(ExperimentalMaterial3Api::class)
+/*@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CategoryDropdown(
     selectedCategory: String,
@@ -160,7 +182,7 @@ fun CategoryDropdown(
             }
         }
     }
-}
+}*/
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -169,7 +191,6 @@ fun CategoryDropdownMenu(
     onSelected: (String) -> Unit,
     categories : List<String>
 ) {
-//    val categories = listOf("Food", "Transport", "Bills", "Entertainment", "Other")
     var expanded by remember { mutableStateOf(false) }
 
     ExposedDropdownMenuBox(
@@ -216,7 +237,7 @@ fun CategoryDropdownMenu(
 }
 
 @Composable
-fun ExpenseItem(expense: ExpenseUI) {
+fun ExpenseItem(expense: TransactionEntity) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(10.dp),
@@ -234,7 +255,10 @@ fun ExpenseItem(expense: ExpenseUI) {
                 Text("📅 ${expense.date}", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                 Text("Category: ${expense.category}", style = MaterialTheme.typography.bodySmall, color = Color(0xFF3B82F6))
             }
-            Text("₹${expense.amount}", style = MaterialTheme.typography.titleMedium)
+            Text("₹${expense.amount}", style = MaterialTheme.typography.titleMedium,
+                color = if(expense.type.equals("Income",true)) {
+                Color(0xFF388E3C) } else { Color(0xFFD32F2F) }
+            )
         }
     }
 }

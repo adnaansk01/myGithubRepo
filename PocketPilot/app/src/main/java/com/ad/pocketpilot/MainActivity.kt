@@ -6,22 +6,17 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.annotation.RequiresApi
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.ad.pocketpilot.presentation.AddExpenseScreen
-import com.ad.pocketpilot.presentation.HomeScreen
+import com.ad.pocketpilot.ui.AddExpenseScreen
+import com.ad.pocketpilot.ui.HomeScreen
 import com.ad.pocketpilot.ui.theme.PocketPilotTheme
 
 class MainActivity : ComponentActivity() {
@@ -33,7 +28,7 @@ class MainActivity : ComponentActivity() {
             PocketPilotTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 {
                     InAppNavigation()
@@ -55,7 +50,7 @@ fun InAppNavigation() {
         }
 
         composable("addexpensescreen") {
-            AddExpenseScreen(onSaveClick = {}, onBack = {navController.navigate("homescreen")})
+            AddExpenseScreen(onBack = {navController.popBackStack()}, navController)
         }
     }
 }
