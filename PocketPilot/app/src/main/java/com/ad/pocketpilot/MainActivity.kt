@@ -6,15 +6,12 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.annotation.RequiresApi
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.ad.pocketpilot.theme.GradientBackground
 import com.ad.pocketpilot.ui.AddExpenseScreen
 import com.ad.pocketpilot.ui.HomeScreen
 import com.ad.pocketpilot.ui.theme.PocketPilotTheme
@@ -26,11 +23,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             PocketPilotTheme {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                {
+                GradientBackground {
                     InAppNavigation()
                 }
             }
@@ -44,13 +37,20 @@ fun InAppNavigation() {
     val navController: NavHostController = rememberNavController()
     NavHost(navController = navController, startDestination = "homescreen") {
         composable("homescreen") {
-            HomeScreen(userName = "AD",onAddExpenseClick = {
+            HomeScreen(onAddExpenseClick = {
                 navController.navigate("addexpensescreen")
-            })
+            }, navController)
         }
 
         composable("addexpensescreen") {
             AddExpenseScreen(onBack = {navController.popBackStack()}, navController)
+        }
+        composable("addexpensescreen/{id}") {
+            backStackEntry ->
+            val id = backStackEntry.arguments?.getString("id")?.toIntOrNull()
+            if(id != null) {
+                AddExpenseScreen(onBack = {navController.popBackStack()},navController,id)
+            }
         }
     }
 }

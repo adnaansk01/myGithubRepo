@@ -15,9 +15,15 @@ class TransactionRepository(private val dao: TransactionDao) {
         dao.insertTransaction(transaction)
     }
 
+    suspend fun update(transaction: TransactionEntity) {
+        dao.updateTransaction(transaction)
+    }
+
     suspend fun delete(id: Int) {
         dao.deleteTransaction(id)
     }
+
+    suspend fun getTransactionById(id: Int) : TransactionEntity? = dao.getTransactionsById(id)
 
     fun getTransactionsByType(type: String): Flow<List<TransactionEntity>> {
         return dao.getTransactionsByType(type)

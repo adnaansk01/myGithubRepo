@@ -27,6 +27,7 @@ class TransactionViewModel(application: Application) : AndroidViewModel(applicat
     private val _totalIncome: StateFlow<Double>
     private val _totalExpense: StateFlow<Double>
     private val _totalBalance: StateFlow<Double>
+    private val _uiState = MutableStateFlow(TransactionUIState())
 
     init {
         val dao = (application as PocketPilotApp).getDatabaseInstance().transactionDao()
@@ -63,6 +64,10 @@ class TransactionViewModel(application: Application) : AndroidViewModel(applicat
         _repository.insert(transaction)
     }
 
+    fun update(transaction: TransactionEntity) = viewModelScope.launch {
+        _repository.update(transaction)
+    }
+
     fun delete(id: Int) = viewModelScope.launch {
         _repository.delete(id)
     }
@@ -74,6 +79,21 @@ class TransactionViewModel(application: Application) : AndroidViewModel(applicat
             }
         }
         return _transactionsByType
+    }
+
+    fun loadTransactionById(id: Int) {
+        viewModelScope.launch {
+            val transaction = _repository.getTransactionById(id)
+            transaction?.let {
+                _uiState.value = TransactionUIState(
+                    id = it.id,
+                    title = it.title,
+                    amount = it.amount.toString(),
+                    category = it.category,
+                    type = it.type
+                )
+            }
+        }
     }
 
     fun getAllTransactions() : StateFlow<List<TransactionEntity>>  = _allTransactions
@@ -92,4 +112,31 @@ class TransactionViewModel(application: Application) : AndroidViewModel(applicat
     fun getTotalExpense() : StateFlow<Double> = _totalExpense
 
     fun getTotalBalance() : StateFlow<Double> = _totalBalance
+
+    fun getUiState() = _uiState
+
+    fun updateTitle(newTitle: String) {
+        _uiState.value = _uiState.value.copy(title = newTitle)
+    }
+
+    fun updateAmount(newAmount: String) {
+        _uiState.value = _uiState.value.copy(amount = newAmount)
+    }
+
+    fun updateCategory(newCategory: String) {
+        _uiState.value = _uiState.value.copy(category = newCategory)
+    }
+
+    fun updateType(newType: String) {
+        _uiState.value = _uiState.value.copy(type = newType)
+    }
 }
+
+
+data class TransactionUIState(
+    val id: Int? = null,
+    val title: String = "",
+    val amount: String = "",
+    val category: String = "Select Category",
+    val type: String = "Income"
+)

@@ -27,6 +27,7 @@ import androidx.compose.material3.ButtonColors
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
@@ -34,6 +35,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -60,24 +62,30 @@ import java.time.LocalDate
 @Composable
 fun AddExpenseScreen(
     onBack: () -> Unit,
-    navController: NavHostController
+    navController: NavHostController,
+    transactionId: Int? = null
 ) {
-    var title by remember { mutableStateOf("") }
-    var amount by remember { mutableStateOf("") }
-    var selectedCategory by remember { mutableStateOf("Select Category") }
     var selectedDate by remember { mutableStateOf(LocalDate.now()) }
 
     val context = LocalContext.current
-    var transactionType by remember { mutableStateOf("Income") }
     val focusManager = LocalFocusManager.current
     val transactionViewModel: TransactionViewModel = viewModel()
     val categories = transactionViewModel.getAllTransactions().collectAsState()
+    val uiState by transactionViewModel.getUiState().collectAsState()
+
+    LaunchedEffect(transactionId) {
+        if (transactionId != null) {
+            transactionViewModel.loadTransactionById(transactionId)
+        }
+    }
 
     Scaffold(
         contentWindowInsets = WindowInsets.systemBars,
         topBar = {
             TopAppBar(
-                title = { Text("Add Expense") },
+                title = { Text(if (transactionId == null) {"Add Transaction" }
+                        else {"Edit Transaction"},
+                    style = MaterialTheme.typography.titleLarge)},
                 navigationIcon = {
                     IconButton(onClick = {
                         focusManager.clearFocus(force = true)
@@ -98,16 +106,16 @@ fun AddExpenseScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             OutlinedTextField(
-                value = title,
-                onValueChange = { title = it },
+                value = uiState.title,
+                onValueChange = { transactionViewModel.updateTitle(it) },
                 label = { Text("Title") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
             )
 
             OutlinedTextField(
-                value = amount,
-                onValueChange = { if (it.all { char -> char.isDigit() }) amount = it },
+                value = uiState.amount,
+                onValueChange = { if (it.all { char -> char.isDigit() }) transactionViewModel.updateAmount(it)},
                 label = { Text("Amount (₹)") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier.fillMaxWidth(),
@@ -115,15 +123,15 @@ fun AddExpenseScreen(
             )
 
             TransactionTypeSelector(
-                selectedType = transactionType,
-                onTypeChange = { transactionType = it }
+                selectedType = uiState.type,
+                onTypeChange = { transactionViewModel.updateType(it) }
             )
 
             // Category Dropdown
             CategoryDropdownMenu(
-                selectedCategory = selectedCategory,
-                onSelected = {selectedCategory = it},
-                if (transactionType == "Income") {
+                selectedCategory = uiState.category,
+                onSelected = {transactionViewModel.updateCategory(it)},
+                if (uiState.type == "Income") {
                     listOf("Salary", "Freelance", "Investment", "Gift", "Refund", "Other")
                 } else {
                     listOf("Food", "Transport", "Shopping", "Bills", "Entertainment", "Other")
@@ -151,28 +159,38 @@ fun AddExpenseScreen(
             // Save Button
             Button(
                 onClick = {
-                    if (title.isNotBlank() && amount.isNotBlank() && selectedCategory != "Select Category") {
-                        transactionViewModel.insert(TransactionEntity(
-                            title = title,
-                            amount = amount.toDouble(),
-                            category = selectedCategory,
-                            type = transactionType,
+                    if (uiState.title.isNotBlank() && uiState.amount.isNotBlank() && uiState.category != "Select Category") {
+                        val transaction = TransactionEntity(
+                            id = uiState.id ?: 0,
+                            title = uiState.title,
+                            amount = uiState.amount.toDouble(),
+                            category = uiState.category,
+                            type = uiState.type,
                             date = selectedDate.toString()
-                        ))
+                        )
+                        if(transactionId == null) {
+                            transactionViewModel.insert(transaction)
+                        } else {
+                            transactionViewModel.update(transaction)
+                        }
+
                         Log.d("AddExpenseScreen","${categories.value}")
-                        title = ""
-                        amount = ""
+                        transactionViewModel.updateTitle("")
+                        transactionViewModel.updateAmount("")
+                        navController.popBackStack()
                     } else {
-                        Log.d("AddExpenseScreen"," Title is not empty = ${title.isNotBlank()} : Amount is not empty= ${amount.isNotBlank()}")
+                        Log.d("AddExpenseScreen"," Title is not empty = ${uiState.title.isNotBlank()} : Amount is not empty= ${uiState.amount.isNotBlank()}")
                         Toast.makeText(context,"Please fill the required fields!!", Toast.LENGTH_SHORT).show()
                     }
-                    navController.popBackStack()
                 },
                 modifier = Modifier.align(Alignment.CenterHorizontally),
-                colors = ButtonColors(containerColor = Color.Black, contentColor = Color.White,
+                colors = ButtonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = Color.White,
                     disabledContentColor = Color.Gray, disabledContainerColor = Color.Gray)
             ) {
-                Text("Save")
+                Text(text =
+                    if (transactionId == null) { "Add" }
+                    else { "Update" }
+                )
             }
         }
     }
@@ -206,6 +224,6 @@ fun TransactionTypeSelector(
 @Composable
 fun AddExpenseScreenPreview() {
     PocketPilotTheme {
-        AddExpenseScreen({}, rememberNavController())
+        AddExpenseScreen({}, rememberNavController(), 1)
     }
 }
